@@ -46,6 +46,7 @@ class SnakeGame:
         self.game_over = False
         self.reward = 0
         self.death_type = None
+        self.steps_since_last_food = 0
 
     def step(self, action):
         if action == 0:  # Left
@@ -63,6 +64,8 @@ class SnakeGame:
 
         self.x1 += self.x1_change
         self.y1 += self.y1_change
+
+        self.steps_since_last_food += 1
 
         if self.x1 >= width or self.x1 < 0 or self.y1 >= height or self.y1 < 0:
             self.game_over = True
@@ -87,7 +90,8 @@ class SnakeGame:
             self.foodx = round(random.randrange(0, width - snake_block) / 10.0) * 10.0
             self.foody = round(random.randrange(0, height - snake_block) / 10.0) * 10.0
             self.Length_of_snake += 1
-            self.reward = 10
+            self.reward = 10 + max(0, 100 - self.steps_since_last_food)  # Reward for eating food quickly
+            self.steps_since_last_food = 0
 
         return self.get_state(), self.reward, self.game_over
 
@@ -180,6 +184,5 @@ def train_snake():
         # Reduce the frequency of rendering to speed up training
         if e % 100 == 0:
             time.sleep(0.1)
-
 
 train_snake()

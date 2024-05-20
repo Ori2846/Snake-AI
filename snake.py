@@ -45,6 +45,7 @@ class SnakeGame:
         self.foody = round(random.randrange(0, height - snake_block) / 10.0) * 10.0
         self.game_over = False
         self.reward = 0
+        self.death_type = None
 
     def step(self, action):
         if action == 0:  # Left
@@ -66,6 +67,7 @@ class SnakeGame:
         if self.x1 >= width or self.x1 < 0 or self.y1 >= height or self.y1 < 0:
             self.game_over = True
             self.reward = -10
+            self.death_type = 'wall collision'
         else:
             self.reward = -0.1  # Small negative reward for each step to encourage faster food finding
 
@@ -78,7 +80,8 @@ class SnakeGame:
         for x in self.snake_List[:-1]:
             if x == snake_Head:
                 self.game_over = True
-                self.reward = -10
+                self.reward = -20  # Larger penalty for self-collision
+                self.death_type = 'self-collision'
 
         if self.x1 == self.foodx and self.y1 == self.foody:
             self.foodx = round(random.randrange(0, width - snake_block) / 10.0) * 10.0
@@ -98,10 +101,6 @@ class SnakeGame:
             self.foodx > self.x1,  # Food is right
             self.foody < self.y1,  # Food is up
             self.foody > self.y1,  # Food is down
-            self.x1 / width,  # Relative position to the screen width
-            self.y1 / height,  # Relative position to the screen height
-            (self.foodx - self.x1) / width,  # Relative food position in x
-            (self.foody - self.y1) / height  # Relative food position in y
         ]
         return np.array(state, dtype=float)
 
@@ -125,11 +124,11 @@ class QLearningAgent:
     def __init__(self, state_size, action_size):
         self.state_size = state_size
         self.action_size = action_size
-        self.q_table = np.zeros((2560000, action_size))  # Updated Q-table size
+        self.q_table = np.zeros((2**state_size, action_size))  # Updated Q-table size
         self.learning_rate = 0.1
         self.discount_rate = 0.99
         self.epsilon = 1.0
-        self.epsilon_decay = 0.995
+        self.epsilon_decay = 0.999  # Slower decay for more exploration
         self.epsilon_min = 0.01
 
     def get_action(self, state):
@@ -146,17 +145,15 @@ class QLearningAgent:
         self.q_table[state_index][action] = (1 - self.learning_rate) * self.q_table[state_index][action] + self.learning_rate * target
 
     def state_to_index(self, state):
-        # Discretize continuous features
-        discrete_state = np.digitize(state[-4:], bins=np.linspace(0, 1, 10)) - 1
-        binary_state = state[:-4].astype(int)
+        binary_state = state.astype(int)
         index = 0
-        for i, val in enumerate(np.concatenate((binary_state, discrete_state))):
+        for i, val in enumerate(binary_state):
             index += val * (2 ** i)
         return index
 
 def train_snake():
     game = SnakeGame()
-    agent = QLearningAgent(state_size=12, action_size=4)  # Adjusted state_size
+    agent = QLearningAgent(state_size=8, action_size=4)  # Adjusted state_size
     episodes = 10000
     highest_score = 0
 
@@ -175,13 +172,14 @@ def train_snake():
 
             if done:
                 highest_score = max(highest_score, game.Length_of_snake - 1)
+                print(f"Episode {e+1}/{episodes}, Score: {game.Length_of_snake-1}, Total Reward: {total_reward}, Highest Score: {highest_score}, Death: {game.death_type}")
                 break
 
         agent.epsilon = max(agent.epsilon_min, agent.epsilon * agent.epsilon_decay)
-        print(f"Episode {e+1}/{episodes}, Score: {game.Length_of_snake-1}, Total Reward: {total_reward}, Highest Score: {highest_score}")
 
         # Reduce the frequency of rendering to speed up training
         if e % 100 == 0:
             time.sleep(0.1)
+
 
 train_snake()

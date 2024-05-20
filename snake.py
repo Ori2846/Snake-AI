@@ -45,6 +45,7 @@ class SnakeGame:
         self.foody = round(random.randrange(0, height - snake_block) / 10.0) * 10.0
         self.game_over = False
         self.reward = 0
+        self.death_cause = None
 
     def step(self, action):
         if action == 0:  # Left
@@ -66,6 +67,7 @@ class SnakeGame:
         if self.x1 >= width or self.x1 < 0 or self.y1 >= height or self.y1 < 0:
             self.game_over = True
             self.reward = -10
+            self.death_cause = 'wall'
         else:
             self.reward = -0.1  # Small negative reward for each step to encourage faster food finding
 
@@ -79,6 +81,7 @@ class SnakeGame:
             if x == snake_Head:
                 self.game_over = True
                 self.reward = -10
+                self.death_cause = 'self'
 
         if self.x1 == self.foodx and self.y1 == self.foody:
             self.foodx = round(random.randrange(0, width - snake_block) / 10.0) * 10.0
@@ -175,10 +178,10 @@ def train_snake():
 
             if done:
                 highest_score = max(highest_score, game.Length_of_snake - 1)
+                print(f"Episode {e+1}/{episodes}, Score: {game.Length_of_snake-1}, Total Reward: {total_reward}, Highest Score: {highest_score}, Death Cause: {game.death_cause}")
                 break
 
         agent.epsilon = max(agent.epsilon_min, agent.epsilon * agent.epsilon_decay)
-        print(f"Episode {e+1}/{episodes}, Score: {game.Length_of_snake-1}, Total Reward: {total_reward}, Highest Score: {highest_score}")
 
         # Reduce the frequency of rendering to speed up training
         if e % 100 == 0:
